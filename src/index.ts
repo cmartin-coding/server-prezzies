@@ -1,6 +1,8 @@
 import express, { Request, Response } from "express";
 import dotenv from "dotenv";
 import { Server } from "socket.io";
+import { homeSocketListeners } from "./socket-listeners/startAndJoinListeners";
+import { RoomType } from "./types";
 
 const http = require("http");
 const cors = require("cors");
@@ -17,8 +19,13 @@ const io = new Server(server, {
   cors: { origin: "http://localhost:5173", methods: ["GET", "POST"] },
 });
 
+export const rooms: RoomType[] = [];
+export const players = [];
+
 io.on("connection", (socket) => {
   console.log("A user connected", socket.id);
+
+  homeSocketListeners(socket, io);
 });
 
 app.get("/", (request: Request, response: Response) => {
