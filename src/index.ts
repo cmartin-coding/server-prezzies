@@ -20,6 +20,7 @@ const io = new Server(server, {
 });
 
 export const rooms: RoomType[] = [];
+
 export const players = [];
 
 io.on("connection", (socket) => {

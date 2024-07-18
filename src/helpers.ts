@@ -1,4 +1,10 @@
-import { Card, Deck, RoomType } from "./types";
+import {
+  Card,
+  ClientAdjustedPlayer,
+  ClientRoom,
+  Deck,
+  RoomType,
+} from "./types";
 
 export function makeDeck(numOfPlayers: number) {
   const deck: Card[] = [];
@@ -73,4 +79,33 @@ export function generateRoomCode(rooms: RoomType[]) {
   }
 
   return roomCode;
+}
+
+export function generateClientRoomFromServerRoom(serverRoom: RoomType) {
+  const serverRoomAdjustedPlayers = serverRoom.players.map((p) => {
+    const adjustedPlayer: ClientAdjustedPlayer = {
+      id: p.id,
+      isReady: p.isReady,
+      name: p.name,
+      numberOfCardsInHand: p.hand.length,
+      position: p.position,
+      wins: p.wins,
+    };
+    return adjustedPlayer;
+  });
+  const clientRoom: ClientRoom = {
+    cardsPlayed: serverRoom.cardsPlayed,
+    handsToChoose: serverRoom.isFirstGame ? [] : serverRoom.handsToChoose,
+    gameIsOver: false,
+    id: serverRoom.id,
+    isFirstGame: serverRoom.isFirstGame,
+    lastHand: serverRoom.previousHand,
+    numberOfPlayers: serverRoom.numberOfPlayers,
+    players: serverRoomAdjustedPlayers,
+    room: serverRoom.room,
+    shareableRoomCode: serverRoom.roomCode,
+    turnCounter: serverRoom.turnCounter,
+  };
+
+  return clientRoom;
 }
