@@ -12,6 +12,7 @@ import { rooms } from "..";
 import {
   generateClientRoomFromServerRoom,
   generateRoomCode,
+  getSortedHandByPoints,
   makeDeck,
   shuffleAndDealDeck,
 } from "../helpers";
@@ -41,7 +42,7 @@ const homeSocketListeners = (
 
     const player: PlayerType = {
       id: playerID,
-      hand: roomHands[0],
+      hand: getSortedHandByPoints(roomHands[0]),
       isReady: false,
       name: userName,
       position: "",
@@ -53,6 +54,8 @@ const homeSocketListeners = (
     const serverRoom: RoomType = {
       cardsPlayed: [],
       deck: [],
+      currentTurnIx: 0,
+      currentTurnPlayerId: "",
       roomCode: shareableRoomCode,
       handsToChoose: roomHands,
       id: roomID,
@@ -83,6 +86,8 @@ const homeSocketListeners = (
     const clientRoom: ClientRoom = {
       cardsPlayed: [],
       gameIsOver: false,
+      currentTurnIndex: 0,
+      currentTurnPlayerId: "",
       room: roomName,
       turnCounter: 0,
       handsToChoose: [],
@@ -116,7 +121,7 @@ const homeSocketListeners = (
     const playerJoinedIx = roomToJoin.players.length;
     const playerID = randomUUID();
     const player: PlayerType = {
-      hand: roomToJoin.handsToChoose[playerJoinedIx],
+      hand: getSortedHandByPoints(roomToJoin.handsToChoose[playerJoinedIx]),
       id: playerID,
       isReady: false,
       name: userName,

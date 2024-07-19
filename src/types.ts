@@ -4,8 +4,11 @@ export type SocketListenerRoomType = {
   numberOfPlayers: number;
 };
 
+export type Suits = "Clubs" | "Spades" | "Diamonds" | "Hearts";
 export type Card = {
+  id: string;
   card: string;
+  suit: Suits;
   points: number;
   suitPoints: number;
   color: "cardRed" | "black";
@@ -34,6 +37,8 @@ export type RoomType = {
   numberOfPlayers: number;
   isFirstGame: boolean;
   turnCounter: number;
+  currentTurnPlayerId: string;
+  currentTurnIx: number;
   lastPlayerPlayed: string;
 };
 export type ClientRoom = {
@@ -45,6 +50,8 @@ export type ClientRoom = {
   isFirstGame: boolean;
   numberOfPlayers: number | null;
   turnCounter: number;
+  currentTurnIndex: number;
+  currentTurnPlayerId: string;
   cardsPlayed: Card[];
   gameIsOver: boolean;
   lastHand: Card[];

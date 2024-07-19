@@ -4,15 +4,16 @@ import {
   ClientRoom,
   Deck,
   RoomType,
+  Suits,
 } from "./types";
 
 export function makeDeck(numOfPlayers: number) {
   const deck: Card[] = [];
-  const suits: { suit: string; color: "cardRed" | "black" }[] = [
-    { suit: "C", color: "black" },
-    { suit: "S", color: "black" },
-    { suit: "D", color: "cardRed" },
-    { suit: "H", color: "cardRed" },
+  const suits: { suit: Suits; color: "cardRed" | "black" }[] = [
+    { suit: "Clubs", color: "black" },
+    { suit: "Spades", color: "black" },
+    { suit: "Diamonds", color: "cardRed" },
+    { suit: "Hearts", color: "cardRed" },
   ];
   const cards = [3, 4, 5, 6, 7, 8, 9, 10, "J", "Q", "K", "A", 2];
   const numberOfDecks = numOfPlayers > 4 ? 2 : 1;
@@ -20,7 +21,9 @@ export function makeDeck(numOfPlayers: number) {
     for (let j = 0; j < suits.length; j++) {
       for (let k = 0; k < cards.length; k++) {
         const card: Card = {
-          card: `${cards[k] + suits[j].suit}`,
+          id: `${cards[k] + suits[j].suit}`,
+          card: `${cards[k]}`,
+          suit: suits[j].suit,
           points: k,
           suitPoints: 0.1 * j,
           color: suits[j].color,
@@ -96,6 +99,8 @@ export function generateClientRoomFromServerRoom(serverRoom: RoomType) {
   const clientRoom: ClientRoom = {
     cardsPlayed: serverRoom.cardsPlayed,
     handsToChoose: serverRoom.isFirstGame ? [] : serverRoom.handsToChoose,
+    currentTurnIndex: serverRoom.currentTurnIx,
+    currentTurnPlayerId: serverRoom.currentTurnPlayerId,
     gameIsOver: false,
     id: serverRoom.id,
     isFirstGame: serverRoom.isFirstGame,
@@ -103,9 +108,21 @@ export function generateClientRoomFromServerRoom(serverRoom: RoomType) {
     numberOfPlayers: serverRoom.numberOfPlayers,
     players: serverRoomAdjustedPlayers,
     room: serverRoom.room,
+
     shareableRoomCode: serverRoom.roomCode,
     turnCounter: serverRoom.turnCounter,
   };
 
   return clientRoom;
+}
+
+export function getSortedHandByPoints(hand: Deck) {
+  const sortedHand = [...hand].sort((a, b) => {
+    if (a.suitPoints !== b.suitPoints) {
+      return a.suitPoints - b.suitPoints;
+    } else {
+      return a.points - b.points;
+    }
+  });
+  return sortedHand;
 }
