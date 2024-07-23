@@ -1,8 +1,10 @@
+import { rooms } from ".";
 import {
   Card,
   ClientAdjustedPlayer,
   ClientRoom,
   Deck,
+  PlayerType,
   RoomType,
   Suits,
 } from "./types";
@@ -25,13 +27,14 @@ export function makeDeck(numOfPlayers: number) {
           card: `${cards[k]}`,
           suit: suits[j].suit,
           points: k,
-          suitPoints: 0.1 * j,
+          suitPoints: +(0.1 * j).toFixed(1),
           color: suits[j].color,
         };
         deck.push(card);
       }
     }
   }
+
   return deck;
 }
 
@@ -125,4 +128,129 @@ export function getSortedHandByPoints(hand: Deck) {
     }
   });
   return sortedHand;
+}
+
+export function getStartingPlayer(players: PlayerType[]): {
+  playerId: string;
+  playerIndex: number;
+} {
+  let playerId = "";
+  let playerIx = 0;
+  // If there are is more than one deck there could be two people with the 3 of clubs
+  const playersWith3OfClubs = players.filter(
+    (p) => p.hand.findIndex((c) => c.points + c.suitPoints === 0) > -1
+  );
+
+  if (playersWith3OfClubs.length > 1) {
+    const randomIndex = Math.floor(Math.random() * 2);
+    playerId = playersWith3OfClubs[randomIndex].id;
+  } else {
+    playerId = playersWith3OfClubs[0].id;
+  }
+
+  playerIx = players.findIndex((p) => p.id === playerId);
+
+  return { playerId: playerId, playerIndex: playerIx };
+}
+
+export function getIsPlayersTurn(room: RoomType, player: PlayerType) {
+  return room.currentTurnPlayerId === player.id;
+}
+
+export function getTotalPointsForHand(hand: Card[]) {
+  return hand.reduce((prev, acc) => prev + acc.points + acc.suitPoints, 0);
+}
+
+export function getServerRoom(room: ClientRoom): RoomType {
+  const serverRoom = rooms.find((r) => r.id === room.id);
+  if (!serverRoom) {
+    throw new Error("Room could not be found");
+  }
+  return serverRoom;
+}
+
+export function getHandIsValid(params: {
+  room: RoomType;
+  hand: Card[];
+  isFirstTurn?: boolean;
+}): { isValid: boolean; errorMsg?: string } {
+  const { hand, room, isFirstTurn } = params;
+
+  // First check that all the cards in the hand have the same amount of points
+  const cardOne = hand[0];
+  const handTotalPoints = getTotalPointsForHand(hand);
+  const handFacePoints = hand.reduce((prev, acc) => prev + acc.points, 0);
+  const isAllCardsSameFaceValue =
+    handFacePoints / hand.length === cardOne.points;
+
+  // If they submitted a hand with mixed base card vals then do not them pass
+  if (!isAllCardsSameFaceValue) {
+    return {
+      isValid: false,
+      errorMsg: "All of the cards are not the same face value",
+    };
+  }
+
+  // If multiple 2's are played return false
+  if (handFacePoints / hand.length === 12 && hand.length > 1) {
+    return {
+      isValid: false,
+      errorMsg: "Multiple 2's were played which is not allowed",
+    };
+  }
+
+  // If first turn then just check for 3 of clubs
+  if (isFirstTurn) {
+    // If not the 3 of clubs then return false
+    const isValidFirstHand =
+      hand.length === 1 && hand[0].points + hand[0].suitPoints === 0;
+    if (!isValidFirstHand) {
+      return {
+        isValid: false,
+        errorMsg: "You can only play the 3 of clubs on the first turn",
+      };
+    }
+  }
+
+  const isATwo = hand.length === 1 && handFacePoints === 12;
+  // If current hand points is not higher than the previous hand then return false
+  if (handTotalPoints < getTotalPointsForHand(room.previousHand) && !isATwo) {
+    return {
+      isValid: false,
+      errorMsg: "The hand you tried to play does not beat the previous hand",
+    };
+  }
+
+  return { isValid: true };
+}
+
+export function getServerPlayer(room: RoomType, player: PlayerType) {
+  const serverPlayer = room.players.find((p) => p.id === player.id);
+  if (!serverPlayer) {
+    throw new Error(
+      "There is not a player in that server room with id " + player.id
+    );
+  }
+
+  return serverPlayer;
+}
+
+export function getHasBeenPassedFullyAround(
+  turnIndex: number,
+  room: RoomType
+) {}
+
+export function getNewTurnIndex(room: RoomType) {
+  let turnIndex = room.currentTurnIx;
+  if (turnIndex === room.players.length - 1) {
+    turnIndex = 0;
+  } else {
+    turnIndex++;
+  }
+
+  if (room.players[turnIndex].hand.length === 0) {
+    getNewTurnIndex({ ...room, currentTurnIx: turnIndex });
+  }
+
+  return turnIndex;
 }

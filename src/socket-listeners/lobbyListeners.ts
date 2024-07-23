@@ -12,6 +12,7 @@ import { rooms } from "..";
 import {
   generateClientRoomFromServerRoom,
   generateRoomCode,
+  getStartingPlayer,
   makeDeck,
   shuffleAndDealDeck,
 } from "../helpers";
@@ -29,9 +30,15 @@ const lobbySocketListeners = (
     // Get curr player in the room and update ready up status on player and in room
     const currRoomIx = rooms.findIndex((r) => r.id === room.id);
     const serverRoom = rooms[currRoomIx];
+
+    const startingPlayerDetail = getStartingPlayer(serverRoom.players);
+    serverRoom.currentTurnIx = startingPlayerDetail.playerIndex;
+    serverRoom.currentTurnPlayerId = startingPlayerDetail.playerId;
+
     const currPlayerIx = serverRoom?.players.findIndex(
       (p) => p.id === player.id
     );
+
     const serverPlayer = serverRoom?.players[currPlayerIx];
     serverPlayer.isReady = readyUpStatus;
     serverPlayer.hand = player.hand;
