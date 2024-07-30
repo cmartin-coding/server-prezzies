@@ -62,12 +62,19 @@ const homeSocketListeners = (
       isFirstGame: true,
       lastPlayerPlayed: "",
       numberOfPlayers: numberOfPlayers,
-      opportunityForCompletedIt: [],
+      opportunityForCompletedIt: {
+        basePoints: 0,
+        card: "",
+        numberOfCardsNeeded: numberOfPlayers > 5 ? 8 : 4,
+      },
       players: [player],
       playersCompleted: [],
       previousHand: [],
       room: roomName,
       turnCounter: 0,
+      placeIndexRemainingPlayersArePlayingFor: 0,
+      gameIsOver: false,
+      numberOfGames: 1,
     };
 
     // add in memory to the curr rooms array
@@ -83,21 +90,7 @@ const homeSocketListeners = (
       wins: 0,
     };
 
-    const clientRoom: ClientRoom = {
-      cardsPlayed: [],
-      gameIsOver: false,
-      currentTurnIndex: 0,
-      currentTurnPlayerId: "",
-      room: roomName,
-      turnCounter: 0,
-      handsToChoose: [],
-      shareableRoomCode: shareableRoomCode,
-      id: roomID,
-      isFirstGame: true,
-      lastHand: [],
-      numberOfPlayers: numberOfPlayers,
-      players: [adjustedPlayer],
-    };
+    const clientRoom: ClientRoom = generateClientRoomFromServerRoom(serverRoom);
     socket.join(roomName);
     socket.emit("onCreatedRoom", { room: clientRoom, player: player });
   };
@@ -141,12 +134,15 @@ const homeSocketListeners = (
     socket.join(roomToJoin.room);
 
     // Send socket instance to the room that shares the new room object with another player
-    socket
-      .to(roomToJoin.room)
-      .emit("onUpdateRoom", { updatedRoom: adjustedClientRoom });
+    socket.to(roomToJoin.room).emit("onUpdateRoom", {
+      updatedRoom: { ...adjustedClientRoom, messages: [] },
+    });
 
     // Send socket instance to front end sharing the player obj and room with user who called the join room
-    socket.emit("onJoinedRoom", { room: adjustedClientRoom, player: player });
+    socket.emit("onJoinedRoom", {
+      room: { ...adjustedClientRoom, messages: [] },
+      player: player,
+    });
   };
 
   socket.on("createRoom", onCreatedRoom);

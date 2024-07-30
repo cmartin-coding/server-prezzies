@@ -32,7 +32,11 @@ export type RoomType = {
   deck: Deck;
   handsToChoose: Deck[];
   cardsPlayed: Card[];
-  opportunityForCompletedIt: Card[];
+  opportunityForCompletedIt: {
+    basePoints: number;
+    numberOfCardsNeeded: number;
+    card: string;
+  };
   previousHand: Card[];
   numberOfPlayers: number;
   isFirstGame: boolean;
@@ -40,6 +44,9 @@ export type RoomType = {
   currentTurnPlayerId: string;
   currentTurnIx: number;
   lastPlayerPlayed: string;
+  placeIndexRemainingPlayersArePlayingFor: number;
+  gameIsOver: boolean;
+  numberOfGames: number;
 };
 export type ClientRoom = {
   id: string;
@@ -55,6 +62,14 @@ export type ClientRoom = {
   cardsPlayed: Card[];
   gameIsOver: boolean;
   lastHand: Card[];
+  messages?: string[];
+  lastPlayerPlayedId: string;
+  numberOfGames: number;
+  opportunityForCompletedIt: {
+    basePoints: number;
+    numberOfCardsNeeded: number;
+    card: string;
+  };
 };
 export type ClientAdjustedPlayer = {
   id: string;
@@ -64,3 +79,13 @@ export type ClientAdjustedPlayer = {
   wins: number;
   isReady: boolean;
 };
+export type Positions =
+  | "President"
+  | "Vice President"
+  | "Upper Class"
+  | "Middle Class"
+  | "Lower Class"
+  | "Poor"
+  | "Scum"
+  | "Scummy Scum"
+  | "Undecided";

@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { rooms } from ".";
 import {
   Card,
@@ -18,12 +19,12 @@ export function makeDeck(numOfPlayers: number) {
     { suit: "Hearts", color: "cardRed" },
   ];
   const cards = [3, 4, 5, 6, 7, 8, 9, 10, "J", "Q", "K", "A", 2];
-  const numberOfDecks = numOfPlayers > 4 ? 2 : 1;
+  const numberOfDecks = numOfPlayers > 5 ? 2 : 1;
   for (let i = 0; i < numberOfDecks; i++) {
     for (let j = 0; j < suits.length; j++) {
       for (let k = 0; k < cards.length; k++) {
         const card: Card = {
-          id: `${cards[k] + suits[j].suit}`,
+          id: `${randomUUID()}`,
           card: `${cards[k]}`,
           suit: suits[j].suit,
           points: k,
@@ -104,13 +105,16 @@ export function generateClientRoomFromServerRoom(serverRoom: RoomType) {
     handsToChoose: serverRoom.isFirstGame ? [] : serverRoom.handsToChoose,
     currentTurnIndex: serverRoom.currentTurnIx,
     currentTurnPlayerId: serverRoom.currentTurnPlayerId,
-    gameIsOver: false,
+    gameIsOver: serverRoom.gameIsOver,
+    numberOfGames: serverRoom.numberOfGames,
     id: serverRoom.id,
     isFirstGame: serverRoom.isFirstGame,
     lastHand: serverRoom.previousHand,
     numberOfPlayers: serverRoom.numberOfPlayers,
     players: serverRoomAdjustedPlayers,
     room: serverRoom.room,
+    lastPlayerPlayedId: serverRoom.lastPlayerPlayed,
+    opportunityForCompletedIt: serverRoom.opportunityForCompletedIt,
 
     shareableRoomCode: serverRoom.roomCode,
     turnCounter: serverRoom.turnCounter,
@@ -121,10 +125,10 @@ export function generateClientRoomFromServerRoom(serverRoom: RoomType) {
 
 export function getSortedHandByPoints(hand: Deck) {
   const sortedHand = [...hand].sort((a, b) => {
-    if (a.suitPoints !== b.suitPoints) {
-      return a.suitPoints - b.suitPoints;
-    } else {
+    if (a.points !== b.points) {
       return a.points - b.points;
+    } else {
+      return a.suitPoints - b.suitPoints;
     }
   });
   return sortedHand;
@@ -136,6 +140,7 @@ export function getStartingPlayer(players: PlayerType[]): {
 } {
   let playerId = "";
   let playerIx = 0;
+
   // If there are is more than one deck there could be two people with the 3 of clubs
   const playersWith3OfClubs = players.filter(
     (p) => p.hand.findIndex((c) => c.points + c.suitPoints === 0) > -1
@@ -145,7 +150,7 @@ export function getStartingPlayer(players: PlayerType[]): {
     const randomIndex = Math.floor(Math.random() * 2);
     playerId = playersWith3OfClubs[randomIndex].id;
   } else {
-    playerId = playersWith3OfClubs[0].id;
+    playerId = playersWith3OfClubs[0]?.id;
   }
 
   playerIx = players.findIndex((p) => p.id === playerId);
@@ -173,6 +178,7 @@ export function getHandIsValid(params: {
   room: RoomType;
   hand: Card[];
   isFirstTurn?: boolean;
+  // player: PlayerType;
 }): { isValid: boolean; errorMsg?: string } {
   const { hand, room, isFirstTurn } = params;
 
@@ -187,7 +193,7 @@ export function getHandIsValid(params: {
   if (!isAllCardsSameFaceValue) {
     return {
       isValid: false,
-      errorMsg: "All of the cards are not the same face value",
+      errorMsg: "tried to play cards that were not the same face value",
     };
   }
 
@@ -195,7 +201,7 @@ export function getHandIsValid(params: {
   if (handFacePoints / hand.length === 12 && hand.length > 1) {
     return {
       isValid: false,
-      errorMsg: "Multiple 2's were played which is not allowed",
+      errorMsg: "tried to play multiple 2's in one hand",
     };
   }
 
@@ -207,17 +213,32 @@ export function getHandIsValid(params: {
     if (!isValidFirstHand) {
       return {
         isValid: false,
-        errorMsg: "You can only play the 3 of clubs on the first turn",
+        errorMsg:
+          "tried to play something other than the 3 of clubs on the first turn",
       };
     }
   }
 
   const isATwo = hand.length === 1 && handFacePoints === 12;
-  // If current hand points is not higher than the previous hand then return false
-  if (handTotalPoints < getTotalPointsForHand(room.previousHand) && !isATwo) {
+  const twoWasPlayedLast =
+    room.previousHand.length === 1 && room.previousHand[0].points === 12;
+  {
+    /*
+       If total points in hand is less than prev hand 
+       AND it is not a two 
+       AND the curr hand does not have more cards than the previous hand
+       THEN return false 
+      */
+  }
+  if (
+    handTotalPoints < getTotalPointsForHand(room.previousHand) &&
+    !isATwo &&
+    hand.length <= room.previousHand.length &&
+    !twoWasPlayedLast
+  ) {
     return {
       isValid: false,
-      errorMsg: "The hand you tried to play does not beat the previous hand",
+      errorMsg: "tried to play a hand that does not beat the previous hands",
     };
   }
 
@@ -235,22 +256,89 @@ export function getServerPlayer(room: RoomType, player: PlayerType) {
   return serverPlayer;
 }
 
-export function getHasBeenPassedFullyAround(
-  turnIndex: number,
-  room: RoomType
-) {}
+export function getNextTurnIndex(serverRoom: RoomType, isPassed?: boolean) {
+  let turnIndex = serverRoom.currentTurnIx;
 
-export function getNewTurnIndex(room: RoomType) {
-  let turnIndex = room.currentTurnIx;
-  if (turnIndex === room.players.length - 1) {
-    turnIndex = 0;
-  } else {
-    turnIndex++;
-  }
+  const findNextPlayerWithCards = (startIndex: number): number => {
+    let index = startIndex;
+    const playerCount = serverRoom.players.length;
 
-  if (room.players[turnIndex].hand.length === 0) {
-    getNewTurnIndex({ ...room, currentTurnIx: turnIndex });
-  }
+    for (let i = 0; i < playerCount; i++) {
+      if (serverRoom.players[index].hand.length > 0) {
+        return index;
+      }
+      index = (index + 1) % playerCount;
+    }
+
+    return startIndex;
+  };
+
+  turnIndex = isPassed
+    ? (turnIndex + 1) % serverRoom.players.length
+    : findNextPlayerWithCards((turnIndex + 1) % serverRoom.players.length);
 
   return turnIndex;
+}
+
+// export function handlePlacementWhenTwoIsPlayedLast(
+//   lastPlaceIndex: number,
+//   serverRoom: RoomType,
+//   playerWhoPlayedTwoLast: PlayerType
+// ) {
+//   const completedPlayers = [...serverRoom.playersCompleted];
+
+//   // If someone currently occupies the last place spot then do logic
+//   if (!!serverRoom.playersCompleted[lastPlaceIndex]) {
+//     const tempPlayer = serverRoom.playersCompleted[lastPlaceIndex];
+//     completedPlayers[lastPlaceIndex] = playerWhoPlayedTwoLast;
+//     handlePlacementWhenTwoIsPlayedLast(
+//       lastPlaceIndex - 1,
+//       serverRoom,
+//       tempPlayer
+//     );
+//   } else {
+//     // If someone does not occupy last place slot then put the player who played 2 last in last place spot
+//     completedPlayers[lastPlaceIndex] = playerWhoPlayedTwoLast;
+//   }
+
+//   return serverRoom;
+// }
+
+export function getIsCompletedItValid(params: {
+  completedItHand: Card[];
+
+  room: RoomType;
+}) {
+  const { completedItHand, room } = params;
+
+  const completedItHandLength = completedItHand.length;
+  const baseCompletedItHandLengthRequirement = room.numberOfPlayers > 5 ? 8 : 4;
+
+  const completedItAveragePoints =
+    completedItHand.reduce((prev, acc) => prev + acc.points, 0) /
+    completedItHandLength;
+
+  const completedItHandIsAllTheSameCard =
+    completedItHand[0].points === completedItAveragePoints;
+
+  // First check is that all of the cards in the completed it are the same
+  if (!completedItHandIsAllTheSameCard) {
+    return false;
+  }
+
+  // If the length of the completedItHand is equal to the total amount of the cards in deck
+  if (completedItHand.length === baseCompletedItHandLengthRequirement) {
+    return true;
+  }
+
+  // If the length is the same as the opportunity for completed it then we need to check that it matches the current points val
+  if (
+    completedItHand.length ===
+      room.opportunityForCompletedIt.numberOfCardsNeeded &&
+    completedItAveragePoints === room.opportunityForCompletedIt.basePoints
+  ) {
+    return true;
+  }
+
+  return false;
 }

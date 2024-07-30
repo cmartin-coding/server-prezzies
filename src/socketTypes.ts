@@ -19,6 +19,11 @@ export interface ServerToClientEvents {
   }) => void;
   onSendErrorMessage: (params: { errorMessage: string }) => void;
   onBroadcastMessage: (params: { message: string }) => void;
+  onGameIsOver: (params: { updatedRoom: ClientRoom }) => void;
+  onCompletedIt: (params: {
+    updatedPlayer: PlayerType;
+    updatedRoom: ClientRoom;
+  }) => void;
 }
 export interface ClientToServerEvents {
   createRoom: (params: {
@@ -36,6 +41,12 @@ export interface ClientToServerEvents {
     hand: Card[];
     player: PlayerType;
     room: ClientRoom;
+  }) => void;
+  passTurn: (params: { room: ClientRoom; player: PlayerType }) => void;
+  completedIt: (params: {
+    player: PlayerType;
+    room: ClientRoom;
+    completedItHand: Card[];
   }) => void;
 }
 
