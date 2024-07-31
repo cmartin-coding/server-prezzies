@@ -1,26 +1,15 @@
-import { Server, Socket } from "socket.io";
-import { DefaultEventsMap } from "socket.io/dist/typed-events";
-import {
-  ClientAdjustedPlayer,
-  ClientRoom,
-  PlayerType,
-  RoomType,
-  SocketListenerRoomType,
-} from "../types";
-import { randomUUID } from "crypto";
+import { Socket } from "socket.io";
+
+import { ClientRoom, PlayerType } from "../types";
+
 import { rooms } from "..";
 import {
   generateClientRoomFromServerRoom,
-  generateRoomCode,
   getStartingPlayer,
-  makeDeck,
-  shuffleAndDealDeck,
 } from "../helpers";
+import { IOType } from "../socketTypes";
 
-const lobbySocketListeners = (
-  socket: Socket,
-  io: Server<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>
-) => {
+const lobbySocketListeners = (socket: Socket, io: IOType) => {
   const onReadyUp = (params: {
     player: PlayerType;
     room: ClientRoom;

@@ -5,6 +5,7 @@ import { homeSocketListeners } from "./socket-listeners/startAndJoinListeners";
 import { RoomType } from "./types";
 import { lobbySocketListeners } from "./socket-listeners/lobbyListeners";
 import { gameSocketListeners } from "./socket-listeners/gameListeners";
+import { IOType } from "./socketTypes";
 
 const http = require("http");
 const cors = require("cors");
@@ -17,7 +18,7 @@ app.use(cors());
 
 const server = http.createServer(app);
 
-const io = new Server(server, {
+const io: IOType = new Server(server, {
   cors: { origin: "http://localhost:5173", methods: ["GET", "POST"] },
 });
 

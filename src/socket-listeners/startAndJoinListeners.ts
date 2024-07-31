@@ -16,11 +16,9 @@ import {
   makeDeck,
   shuffleAndDealDeck,
 } from "../helpers";
+import { IOType } from "../socketTypes";
 
-const homeSocketListeners = (
-  socket: Socket,
-  io: Server<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>
-) => {
+const homeSocketListeners = (socket: Socket, io: IOType) => {
   const onCreatedRoom = (params: SocketListenerRoomType) => {
     console.log("Creating the room");
 
@@ -42,6 +40,7 @@ const homeSocketListeners = (
 
     const player: PlayerType = {
       id: playerID,
+      socketID: socket.id,
       hand: getSortedHandByPoints(roomHands[0]),
       isReady: false,
       name: userName,
@@ -116,6 +115,7 @@ const homeSocketListeners = (
     const player: PlayerType = {
       hand: getSortedHandByPoints(roomToJoin.handsToChoose[playerJoinedIx]),
       id: playerID,
+      socketID: socket.id,
       isReady: false,
       name: userName,
       position: "",

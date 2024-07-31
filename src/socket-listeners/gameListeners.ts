@@ -12,13 +12,17 @@ import {
   getServerRoom,
   // handlePlacementWhenTwoIsPlayedLast,
   getIsCompletedItValid,
+  makeDeck,
+  shuffleAndDealDeck,
+  handleResetServerRoom,
+  handlePlayedTwoAsLastCard,
 } from "../helpers";
 import { positionTitles } from "../const";
 import { Client } from "socket.io/dist/client";
 
 const gameSocketListeners = (
   socket: Socket<ClientToServerEvents, ServerToClientEvents>,
-  io: Server<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>
+  io: Server<ClientToServerEvents, ServerToClientEvents, DefaultEventsMap, any>
 ) => {
   const onPlayHand: (params: {
     hand: Card[];
@@ -112,19 +116,38 @@ const gameSocketListeners = (
     if (serverPlayer.hand.length === 0) {
       // If they played a 2 last then they will come in last as that is against the rules!
       if (hand.length === 1 && hand[0].points === 12) {
-        // TODO: HANDLE IF THEY PLAYED 2 LAST
+        const adjustedPlayersCompleted = handlePlayedTwoAsLastCard({
+          playersCompleted: serverRoom.playersCompleted,
+          indexToPlacePlayer: serverRoom.numberOfPlayers - 1,
+          player: serverPlayer,
+          numberOfTotalPlayers: serverRoom.numberOfPlayers,
+        });
+        const position =
+          positionTitles[serverRoom.numberOfPlayers][
+            serverRoom.numberOfPlayers - 1
+          ];
+        serverRoom.playersCompleted = adjustedPlayersCompleted;
+        serverPlayer.position = position;
       } else {
+        // Set the player into the players completed arr based on the current place everyone is playing for
         serverRoom.playersCompleted[
           serverRoom.placeIndexRemainingPlayersArePlayingFor
         ] = serverPlayer;
+
+        // Update the player position
+        serverPlayer.position =
+          positionTitles[serverRoom.numberOfPlayers][
+            serverRoom.placeIndexRemainingPlayersArePlayingFor
+          ];
+
+        // If the place they are playing for is index of 0 (ie: 1st place) then increment that players win counter
+        if (serverRoom.placeIndexRemainingPlayersArePlayingFor === 0) {
+          serverPlayer.wins++;
+        }
+
+        // Increment the position everyone is playing for
         serverRoom.placeIndexRemainingPlayersArePlayingFor++;
       }
-
-      const placementIndex = serverRoom.playersCompleted.findIndex(
-        (player) => player.id === serverPlayer.id
-      );
-      serverPlayer.position =
-        positionTitles[serverRoom.numberOfPlayers][placementIndex];
     }
 
     // HANDLE COMPLETED IT CHECKING ------------------
@@ -165,7 +188,6 @@ const gameSocketListeners = (
         numberOfCardsNeeded: overallCompletedItCardTotal - hand.length,
       };
     } else {
-      console.log("HERHEERE");
       serverRoom.opportunityForCompletedIt = {
         basePoints: 0,
         card: "Any",
@@ -179,19 +201,44 @@ const gameSocketListeners = (
     serverRoom.turnCounter++;
     serverRoom.lastPlayerPlayed = player.id;
 
-    // TODO: HANDLE GAME OVER CHECK
-
+    // If the players completed length is the number of players minus one then the game is over
     if (serverRoom.playersCompleted.length === serverRoom.numberOfPlayers - 1) {
+      const remainingPlayer = serverRoom.players.filter(
+        (p) => !serverRoom.playersCompleted.some((player) => player.id === p.id)
+      )[0];
+
+      remainingPlayer.position =
+        positionTitles[serverRoom.numberOfPlayers][
+          serverRoom.placeIndexRemainingPlayersArePlayingFor
+        ];
+
+      serverRoom.playersCompleted[
+        serverRoom.placeIndexRemainingPlayersArePlayingFor
+      ] = remainingPlayer;
+
       serverRoom.gameIsOver = true;
     }
 
-    const clientRoom = generateClientRoomFromServerRoom(serverRoom);
+    const clientRoom = serverRoom.gameIsOver
+      ? generateClientRoomFromServerRoom(handleResetServerRoom(serverRoom))
+      : generateClientRoomFromServerRoom(serverRoom);
 
-    socket.emit("onPlayedHand", {
-      updatedRoom: clientRoom,
-      updatedPlayer: serverPlayer,
-    });
-    socket.to(room.room).emit("onUpdateRoom", { updatedRoom: clientRoom });
+    if (clientRoom.gameIsOver) {
+      // Update all players in case they were changed based on how the game ended
+      for (let i = 0; i < serverRoom.numberOfPlayers; i++) {
+        const player = serverRoom.players[i];
+        socket
+          .to(player.socketID)
+          .emit("onUpdatePlayerAfterGameCompleted", { updatedPlayer: player });
+      }
+      io.in(room.room).emit("onGameIsOver", { updatedRoom: clientRoom });
+    } else {
+      socket.emit("onPlayedHand", {
+        updatedRoom: clientRoom,
+        updatedPlayer: serverPlayer,
+      });
+      socket.to(room.room).emit("onUpdateRoom", { updatedRoom: clientRoom });
+    }
   };
 
   const onPass = (params: { room: ClientRoom; player: PlayerType }) => {
@@ -221,15 +268,23 @@ const gameSocketListeners = (
     serverRoom.currentTurnPlayerId = serverRoom.players[turnIndex].id;
     serverRoom.turnCounter++;
 
-    // If the new room index matches the last player played, then we should clear out all of the cards as the player can play anything
+    // This checks that if a player who was out before played last then this will reset the cards
     if (serverRoom.currentTurnPlayerId === serverRoom.lastPlayerPlayed) {
       serverRoom.cardsPlayed = [];
       serverRoom.previousHand = [];
-      // If the current player has no cards then it means it was passed around and then we should handle the turn counter to find next person with no cards
-      if (serverRoom.players[turnIndex].hand.length === 0) {
-        turnIndex = getNextTurnIndex(serverRoom);
-        serverRoom.currentTurnIx = turnIndex;
-        serverRoom.currentTurnPlayerId = serverRoom.players[turnIndex].id;
+    }
+
+    // This checks that if the player also has a hand length of 0 then we need to iterate the turn index function again
+
+    if (serverRoom.players[turnIndex].hand.length === 0) {
+      turnIndex = getNextTurnIndex(serverRoom);
+      serverRoom.currentTurnIx = turnIndex;
+      serverRoom.currentTurnPlayerId = serverRoom.players[turnIndex].id;
+
+      // Inside here we also need to check if they were the last player played and if so we should reset the server room cards played and prev hand
+      if (serverRoom.currentTurnPlayerId === serverRoom.lastPlayerPlayed) {
+        serverRoom.cardsPlayed = [];
+        serverRoom.previousHand = [];
       }
     }
 

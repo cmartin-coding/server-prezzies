@@ -16,6 +16,7 @@ export type Card = {
 export type Deck = Card[];
 export type PlayerType = {
   id: string;
+  socketID: string;
   name: string;
   hand: Deck;
   isReady: boolean;
@@ -53,7 +54,7 @@ export type ClientRoom = {
   room: string;
   shareableRoomCode: string;
   players: ClientAdjustedPlayer[];
-  handsToChoose: Deck[];
+  handsToChoose: (Card[] | { id: string }[])[];
   isFirstGame: boolean;
   numberOfPlayers: number | null;
   turnCounter: number;

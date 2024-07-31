@@ -6,9 +6,11 @@ import {
   ClientRoom,
   Deck,
   PlayerType,
+  Positions,
   RoomType,
   Suits,
 } from "./types";
+import { positionTitles } from "./const";
 
 export function makeDeck(numOfPlayers: number) {
   const deck: Card[] = [];
@@ -100,9 +102,24 @@ export function generateClientRoomFromServerRoom(serverRoom: RoomType) {
     };
     return adjustedPlayer;
   });
+
+  const numberOfCardsToShow = serverRoom.numberOfPlayers > 5 ? 2 : 1;
+  const handsToChooseAdjustedForClientRoom = serverRoom.handsToChoose.map(
+    (hand, ix) => {
+      return hand.map((c, ix) => {
+        if (ix <= numberOfCardsToShow - 1) {
+          return { ...c };
+        } else {
+          return { id: c.id };
+        }
+      });
+    }
+  );
   const clientRoom: ClientRoom = {
     cardsPlayed: serverRoom.cardsPlayed,
-    handsToChoose: serverRoom.isFirstGame ? [] : serverRoom.handsToChoose,
+    handsToChoose: serverRoom.isFirstGame
+      ? []
+      : handsToChooseAdjustedForClientRoom,
     currentTurnIndex: serverRoom.currentTurnIx,
     currentTurnPlayerId: serverRoom.currentTurnPlayerId,
     gameIsOver: serverRoom.gameIsOver,
@@ -341,4 +358,88 @@ export function getIsCompletedItValid(params: {
   }
 
   return false;
+}
+
+export function handleResetServerRoom(serverRoom: RoomType) {
+  const roomDeck = makeDeck(serverRoom.numberOfPlayers);
+  const roomHands = shuffleAndDealDeck({
+    deck: roomDeck,
+    numberOfPlayers: serverRoom.numberOfPlayers,
+  });
+
+  // Update the available hands to choose from before starting next round
+  serverRoom.handsToChoose = roomHands;
+
+  // Increment number of games played
+  serverRoom.numberOfGames++;
+
+  // Reset the turn counter to 0
+  serverRoom.turnCounter = 0;
+
+  // Reset the cards played thus far
+  serverRoom.cardsPlayed = [];
+
+  // Get the winner to handle setting turn index for hand selections
+  const winner = serverRoom.playersCompleted[0];
+  serverRoom.currentTurnIx = 0;
+  serverRoom.currentTurnPlayerId = winner.id;
+
+  // Reset all the players hands to be emptyy
+  const updatedPlayersWithoutCardsInHand = serverRoom.players.map((p) => ({
+    ...p,
+    hand: [],
+    // this makes sure that the correct positions are updated for everyone
+    position: serverRoom.playersCompleted.find((pl) => pl.id === p.id)
+      ?.position as Positions,
+  }));
+  serverRoom.players = updatedPlayersWithoutCardsInHand;
+
+  // Reset the opportunity for completed it to take any
+  serverRoom.opportunityForCompletedIt = {
+    basePoints: 0,
+    card: "Any",
+    numberOfCardsNeeded: serverRoom.numberOfPlayers > 5 ? 8 : 4,
+  };
+
+  // Reset the place everyone is playing for
+  serverRoom.placeIndexRemainingPlayersArePlayingFor = 0;
+
+  //Reset previous hand to empty
+  serverRoom.previousHand = [];
+
+  // Set the isFirstGame Flag to false
+  serverRoom.isFirstGame = false;
+
+  return serverRoom;
+}
+
+export function handlePlayedTwoAsLastCard(params: {
+  playersCompleted: PlayerType[];
+  indexToPlacePlayer: number;
+  player: PlayerType;
+  numberOfTotalPlayers: number;
+}) {
+  const { indexToPlacePlayer, player, playersCompleted, numberOfTotalPlayers } =
+    params;
+
+  const adjustedPlayer = { ...player };
+  adjustedPlayer.position =
+    positionTitles[numberOfTotalPlayers][indexToPlacePlayer];
+  const adjustedPlayersCompleted = [...playersCompleted];
+
+  // If there is not someone in last place already then just put the player in last and return the updated completed players.
+  if (indexToPlacePlayer < 0 || !adjustedPlayersCompleted[indexToPlacePlayer]) {
+    adjustedPlayersCompleted[indexToPlacePlayer] = player;
+    return adjustedPlayersCompleted;
+  } else {
+    // If there is someone in last place then we need to adjust the last place person to second to last, etc.
+    const tempPlayer = adjustedPlayersCompleted[indexToPlacePlayer];
+    adjustedPlayersCompleted[indexToPlacePlayer] = player;
+    return handlePlayedTwoAsLastCard({
+      playersCompleted: adjustedPlayersCompleted,
+      indexToPlacePlayer: indexToPlacePlayer - 1,
+      player: tempPlayer,
+      numberOfTotalPlayers,
+    });
+  }
 }

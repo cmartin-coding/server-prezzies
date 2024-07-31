@@ -1,6 +1,14 @@
 import { Server, Socket } from "socket.io";
 import { Card, ClientRoom, Deck, PlayerType } from "./types";
 import { Client } from "socket.io/dist/client";
+import { DefaultEventsMap } from "socket.io/dist/typed-events";
+
+export type IOType = Server<
+  ClientToServerEvents,
+  ServerToClientEvents,
+  DefaultEventsMap,
+  any
+>;
 
 export interface ServerToClientEvents {
   noArg: () => void;
@@ -19,10 +27,16 @@ export interface ServerToClientEvents {
   }) => void;
   onSendErrorMessage: (params: { errorMessage: string }) => void;
   onBroadcastMessage: (params: { message: string }) => void;
-  onGameIsOver: (params: { updatedRoom: ClientRoom }) => void;
+
   onCompletedIt: (params: {
     updatedPlayer: PlayerType;
     updatedRoom: ClientRoom;
+  }) => void;
+  onGameIsOver: (params: { updatedRoom: ClientRoom }) => void;
+  onLastPlaceUpdated: (params: { updatedPlayer: PlayerType }) => void;
+  onPassedTurn: (params: { updatedRoom: ClientRoom }) => void;
+  onUpdatePlayerAfterGameCompleted: (params: {
+    updatedPlayer: PlayerType;
   }) => void;
 }
 export interface ClientToServerEvents {
