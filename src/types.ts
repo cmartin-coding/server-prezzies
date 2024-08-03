@@ -23,11 +23,13 @@ export type PlayerType = {
   wins: number;
   position: string;
   isHost?: boolean;
+  isInPostGameLobby: boolean;
 };
 export type RoomType = {
   id: string;
   players: PlayerType[];
   playersCompleted: PlayerType[];
+  currentStandings: PlayerType[];
   roomCode: string;
   room: string;
   deck: Deck;
@@ -54,7 +56,7 @@ export type ClientRoom = {
   room: string;
   shareableRoomCode: string;
   players: ClientAdjustedPlayer[];
-  handsToChoose: (Card[] | { id: string }[])[];
+  handsToChoose: { id?: string }[] & Partial<Card>[];
   isFirstGame: boolean;
   numberOfPlayers: number | null;
   turnCounter: number;
@@ -76,9 +78,10 @@ export type ClientAdjustedPlayer = {
   id: string;
   name: string;
   numberOfCardsInHand: number;
-  position: string;
+  position: { place: number; title: string };
   wins: number;
   isReady: boolean;
+  isInPostGameLobby: boolean;
 };
 export type Positions =
   | "President"

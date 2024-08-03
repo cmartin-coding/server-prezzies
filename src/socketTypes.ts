@@ -1,5 +1,5 @@
 import { Server, Socket } from "socket.io";
-import { Card, ClientRoom, Deck, PlayerType } from "./types";
+import { Card, ClientRoom, Deck, PlayerType, RoomType } from "./types";
 import { Client } from "socket.io/dist/client";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
 
@@ -38,6 +38,8 @@ export interface ServerToClientEvents {
   onUpdatePlayerAfterGameCompleted: (params: {
     updatedPlayer: PlayerType;
   }) => void;
+  onEnteredPostGameLobby: (params: { updatedRoom: ClientRoom }) => void;
+  onUpdatePlayer: (params: { updatedPlayer: PlayerType }) => void;
 }
 export interface ClientToServerEvents {
   createRoom: (params: {
@@ -62,6 +64,8 @@ export interface ClientToServerEvents {
     room: ClientRoom;
     completedItHand: Card[];
   }) => void;
+
+  enteredPostGameLobby: (player: PlayerType, room: ClientRoom) => void;
 }
 
 export type SocketType = Socket<ServerToClientEvents, ClientToServerEvents>;

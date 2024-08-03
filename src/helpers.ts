@@ -92,13 +92,17 @@ export function generateRoomCode(rooms: RoomType[]) {
 
 export function generateClientRoomFromServerRoom(serverRoom: RoomType) {
   const serverRoomAdjustedPlayers = serverRoom.players.map((p) => {
+    const placeIndex = serverRoom.currentStandings.findIndex(
+      (player) => player.id === p.id
+    );
     const adjustedPlayer: ClientAdjustedPlayer = {
       id: p.id,
       isReady: p.isReady,
       name: p.name,
       numberOfCardsInHand: p.hand.length,
-      position: p.position,
+      position: { title: p.position, place: placeIndex },
       wins: p.wins,
+      isInPostGameLobby: p.isInPostGameLobby,
     };
     return adjustedPlayer;
   });
@@ -381,7 +385,10 @@ export function handleResetServerRoom(serverRoom: RoomType) {
 
   // Get the winner to handle setting turn index for hand selections
   const winner = serverRoom.playersCompleted[0];
-  serverRoom.currentTurnIx = 0;
+  const handSelectionTurnIx = serverRoom.players.findIndex(
+    (p) => p.id === winner.id
+  );
+  serverRoom.currentTurnIx = handSelectionTurnIx;
   serverRoom.currentTurnPlayerId = winner.id;
 
   // Reset all the players hands to be emptyy
@@ -410,6 +417,7 @@ export function handleResetServerRoom(serverRoom: RoomType) {
   // Set the isFirstGame Flag to false
   serverRoom.isFirstGame = false;
 
+  serverRoom.currentStandings = serverRoom.playersCompleted;
   return serverRoom;
 }
 
@@ -442,4 +450,16 @@ export function handlePlayedTwoAsLastCard(params: {
       numberOfTotalPlayers,
     });
   }
+}
+
+export function generateFullHandDetailsFromCardIDs(
+  hand: { id: string }[] & Partial<Card>[],
+  deck: Card[]
+) {
+  const formattedHand = [...hand].map((c) => {
+    const cardDetail = deck.find((deckCard) => c.id === deckCard.id);
+    return { ...cardDetail };
+  });
+
+  return formattedHand;
 }

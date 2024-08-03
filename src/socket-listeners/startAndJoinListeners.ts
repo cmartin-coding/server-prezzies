@@ -47,11 +47,13 @@ const homeSocketListeners = (socket: Socket, io: IOType) => {
       position: "",
       wins: 0,
       isHost: true,
+      isInPostGameLobby: false,
     };
 
     // Create a new server room type that holds source of truth
     const serverRoom: RoomType = {
       cardsPlayed: [],
+      currentStandings: [],
       deck: [],
       currentTurnIx: 0,
       currentTurnPlayerId: "",
@@ -85,8 +87,9 @@ const homeSocketListeners = (socket: Socket, io: IOType) => {
       isReady: false,
       name: userName,
       numberOfCardsInHand: roomHands[0].length,
-      position: "",
+      position: { place: 0, title: "" },
       wins: 0,
+      isInPostGameLobby: false,
     };
 
     const clientRoom: ClientRoom = generateClientRoomFromServerRoom(serverRoom);
@@ -121,6 +124,7 @@ const homeSocketListeners = (socket: Socket, io: IOType) => {
       position: "",
       wins: 0,
       isHost: false,
+      isInPostGameLobby: false,
     };
 
     // Add new player to room

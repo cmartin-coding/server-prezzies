@@ -263,30 +263,32 @@ const gameSocketListeners = (
       return;
     }
 
+    // Increment the turn index once
     let turnIndex = getNextTurnIndex(serverRoom, true);
+    // Set the serverRoom to that turn index
     serverRoom.currentTurnIx = turnIndex;
-    serverRoom.currentTurnPlayerId = serverRoom.players[turnIndex].id;
-    serverRoom.turnCounter++;
 
-    // This checks that if a player who was out before played last then this will reset the cards
-    if (serverRoom.currentTurnPlayerId === serverRoom.lastPlayerPlayed) {
+    // While the current turn index player has 0 cards in their hand
+    while (serverRoom.players[turnIndex].hand.length === 0) {
+      // Check if they are also the last player played and if so cancel out the cards playeds and previous hand
+      if (serverRoom.players[turnIndex].id === serverRoom.lastPlayerPlayed) {
+        serverRoom.cardsPlayed = [];
+        serverRoom.previousHand = [];
+      }
+      // Increment the turn index to the next player
+      turnIndex = getNextTurnIndex(serverRoom, true);
+      // Set the serverRoom current turn ix to next val and it will run the while loop again if that person also has 0 cards
+      serverRoom.currentTurnIx = turnIndex;
+    }
+
+    if (serverRoom.players[turnIndex].id === serverRoom.lastPlayerPlayed) {
       serverRoom.cardsPlayed = [];
       serverRoom.previousHand = [];
     }
 
-    // This checks that if the player also has a hand length of 0 then we need to iterate the turn index function again
-
-    if (serverRoom.players[turnIndex].hand.length === 0) {
-      turnIndex = getNextTurnIndex(serverRoom);
-      serverRoom.currentTurnIx = turnIndex;
-      serverRoom.currentTurnPlayerId = serverRoom.players[turnIndex].id;
-
-      // Inside here we also need to check if they were the last player played and if so we should reset the server room cards played and prev hand
-      if (serverRoom.currentTurnPlayerId === serverRoom.lastPlayerPlayed) {
-        serverRoom.cardsPlayed = [];
-        serverRoom.previousHand = [];
-      }
-    }
+    // This checks that if a player who was out before played last then this will reset the cards
+    serverRoom.currentTurnPlayerId = serverRoom.players[turnIndex].id;
+    serverRoom.turnCounter++;
 
     const updatedRoom = generateClientRoomFromServerRoom(serverRoom);
 

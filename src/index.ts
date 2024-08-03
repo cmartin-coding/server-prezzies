@@ -6,6 +6,7 @@ import { RoomType } from "./types";
 import { lobbySocketListeners } from "./socket-listeners/lobbyListeners";
 import { gameSocketListeners } from "./socket-listeners/gameListeners";
 import { IOType } from "./socketTypes";
+import { postGameSocketListeners } from "./socket-listeners/postGameListeners";
 
 const http = require("http");
 const cors = require("cors");
@@ -32,6 +33,7 @@ io.on("connection", (socket) => {
   homeSocketListeners(socket, io);
   lobbySocketListeners(socket, io);
   gameSocketListeners(socket, io);
+  postGameSocketListeners(socket, io);
 });
 
 app.get("/", (request: Request, response: Response) => {
