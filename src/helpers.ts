@@ -43,9 +43,9 @@ export function makeDeck(numOfPlayers: number) {
 
 export type deckArgs = { deck: Deck; numberOfPlayers: number };
 
-export function shuffleAndDealDeck(props: deckArgs) {
+export function shuffleAndDealDeck(params: deckArgs) {
   // const deck = makeDeck(props.numberOfPlayers);
-  const deck = props.deck;
+  const deck = [...params.deck];
   const playerHands: Deck[] = [];
   //shuffle the deck
   for (let i = deck.length - 1; i > 0; i--) {
@@ -56,14 +56,14 @@ export function shuffleAndDealDeck(props: deckArgs) {
   }
 
   // deal the deck
-  const totalHands = deck.length / props.numberOfPlayers;
-  for (let i = 0; i < props.numberOfPlayers; i++) {
+  const totalHands = deck.length / params.numberOfPlayers;
+  for (let i = 0; i < params.numberOfPlayers; i++) {
     playerHands.push([]);
   }
   playerHands.forEach((hand) => {
     for (let i = 0; i < totalHands; i++) {
       if (deck.length > 0) {
-        hand.push(deck.pop()!);
+        hand.push(deck.pop() as Card);
       }
     }
   });
@@ -95,12 +95,13 @@ export function generateClientRoomFromServerRoom(serverRoom: RoomType) {
     const placeIndex = serverRoom.currentStandings.findIndex(
       (player) => player.id === p.id
     );
+
     const adjustedPlayer: ClientAdjustedPlayer = {
       id: p.id,
       isReady: p.isReady,
       name: p.name,
       numberOfCardsInHand: p.hand.length,
-      position: { title: p.position, place: placeIndex },
+      position: { title: p.position.title, place: p.position.place },
       wins: p.wins,
       isInPostGameLobby: p.isInPostGameLobby,
     };
@@ -252,7 +253,7 @@ export function getHandIsValid(params: {
       */
   }
   if (
-    handTotalPoints < getTotalPointsForHand(room.previousHand) &&
+    handTotalPoints <= getTotalPointsForHand(room.previousHand) &&
     !isATwo &&
     hand.length <= room.previousHand.length &&
     !twoWasPlayedLast
@@ -365,9 +366,8 @@ export function getIsCompletedItValid(params: {
 }
 
 export function handleResetServerRoom(serverRoom: RoomType) {
-  const roomDeck = makeDeck(serverRoom.numberOfPlayers);
   const roomHands = shuffleAndDealDeck({
-    deck: roomDeck,
+    deck: serverRoom.deck,
     numberOfPlayers: serverRoom.numberOfPlayers,
   });
 
@@ -397,8 +397,9 @@ export function handleResetServerRoom(serverRoom: RoomType) {
     hand: [],
     // this makes sure that the correct positions are updated for everyone
     position: serverRoom.playersCompleted.find((pl) => pl.id === p.id)
-      ?.position as Positions,
+      ?.position as { place: number; title: Positions },
   }));
+
   serverRoom.players = updatedPlayersWithoutCardsInHand;
 
   // Reset the opportunity for completed it to take any
@@ -418,6 +419,8 @@ export function handleResetServerRoom(serverRoom: RoomType) {
   serverRoom.isFirstGame = false;
 
   serverRoom.currentStandings = serverRoom.playersCompleted;
+
+  serverRoom.numberOfTradesCompleted = 0;
   return serverRoom;
 }
 
@@ -431,8 +434,10 @@ export function handlePlayedTwoAsLastCard(params: {
     params;
 
   const adjustedPlayer = { ...player };
-  adjustedPlayer.position =
-    positionTitles[numberOfTotalPlayers][indexToPlacePlayer];
+  adjustedPlayer.position = {
+    title: positionTitles[numberOfTotalPlayers][indexToPlacePlayer],
+    place: indexToPlacePlayer,
+  };
   const adjustedPlayersCompleted = [...playersCompleted];
 
   // If there is not someone in last place already then just put the player in last and return the updated completed players.
@@ -462,4 +467,58 @@ export function generateFullHandDetailsFromCardIDs(
   });
 
   return formattedHand;
+}
+
+export function handleTradingCardToPlayer(params: {
+  recipientHand: Card[];
+  senderHand: Card[];
+  cards: Card[];
+}) {
+  const { cards, recipientHand, senderHand } = params;
+
+  const filteredPlayerHand = senderHand.filter(
+    (c) => !cards.some((card) => card.id === c.id)
+  );
+
+  const updatedRecipientHand = [...recipientHand, ...cards];
+
+  return {
+    recipientHand: updatedRecipientHand,
+    senderHand: filteredPlayerHand,
+  };
+}
+
+export function handleCheckForLastPlaceTradedBestCards(
+  hand: Card[],
+  cardsToTrade: Card[],
+  numberOfCardsToCheck: number
+): boolean {
+  const cardsSorted = hand.sort((a, b) => {
+    if (a.points !== b.points) {
+      return a.points - b.points;
+    } else {
+      return a.suitPoints - b.suitPoints;
+    }
+  });
+
+  const bestCards = [];
+  for (let i = 0; i < numberOfCardsToCheck; i++) {
+    const card = { ...cardsSorted[i] };
+    bestCards.push(card);
+  }
+
+  console.log("BEST CARDs", bestCards);
+  for (let j = 0; j < cardsToTrade.length; j++) {
+    const selectedCard = cardsToTrade[j];
+    // If the selected card is not a 2 then we will do a check that the card is inside the bestCards arr
+    if (selectedCard.points !== 12) {
+      const isInsideBestCardsArr =
+        bestCards.findIndex((c) => c.id === selectedCard.id) > -1;
+      if (!isInsideBestCardsArr) {
+        return false;
+      }
+    }
+  }
+
+  return true;
 }

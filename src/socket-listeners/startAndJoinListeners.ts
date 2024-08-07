@@ -44,18 +44,20 @@ const homeSocketListeners = (socket: Socket, io: IOType) => {
       hand: getSortedHandByPoints(roomHands[0]),
       isReady: false,
       name: userName,
-      position: "",
+      position: { place: 0, title: "Undecided" },
       wins: 0,
       isHost: true,
       isInPostGameLobby: false,
     };
 
+    console.log(roomDeck);
     // Create a new server room type that holds source of truth
     const serverRoom: RoomType = {
       cardsPlayed: [],
       currentStandings: [],
-      deck: [],
+      deck: roomDeck,
       currentTurnIx: 0,
+      numberOfTradesCompleted: 0,
       currentTurnPlayerId: "",
       roomCode: shareableRoomCode,
       handsToChoose: roomHands,
@@ -121,7 +123,7 @@ const homeSocketListeners = (socket: Socket, io: IOType) => {
       socketID: socket.id,
       isReady: false,
       name: userName,
-      position: "",
+      position: { place: 0, title: "Undecided" },
       wins: 0,
       isHost: false,
       isInPostGameLobby: false,

@@ -29,7 +29,9 @@ export const players = [];
 
 io.on("connection", (socket) => {
   console.log("A user connected", socket.id);
-
+  socket.on("test", () => {
+    socket.emit("onTest", { serverRoom: rooms[0] });
+  });
   homeSocketListeners(socket, io);
   lobbySocketListeners(socket, io);
   gameSocketListeners(socket, io);

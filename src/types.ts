@@ -21,7 +21,7 @@ export type PlayerType = {
   hand: Deck;
   isReady: boolean;
   wins: number;
-  position: string;
+  position: { place: number; title: Positions };
   isHost?: boolean;
   isInPostGameLobby: boolean;
 };
@@ -50,6 +50,7 @@ export type RoomType = {
   placeIndexRemainingPlayersArePlayingFor: number;
   gameIsOver: boolean;
   numberOfGames: number;
+  numberOfTradesCompleted: number;
 };
 export type ClientRoom = {
   id: string;

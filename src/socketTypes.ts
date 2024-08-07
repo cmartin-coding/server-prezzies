@@ -40,6 +40,11 @@ export interface ServerToClientEvents {
   }) => void;
   onEnteredPostGameLobby: (params: { updatedRoom: ClientRoom }) => void;
   onUpdatePlayer: (params: { updatedPlayer: PlayerType }) => void;
+  onTest: (params: { serverRoom: any }) => void;
+  onTradingCompleted: (params: {
+    isTradingCompleted: boolean;
+    room: ClientRoom;
+  }) => void;
 }
 export interface ClientToServerEvents {
   createRoom: (params: {
@@ -66,6 +71,17 @@ export interface ClientToServerEvents {
   }) => void;
 
   enteredPostGameLobby: (player: PlayerType, room: ClientRoom) => void;
+  selectHandInPostGameLobby: (params: {
+    player: PlayerType;
+    room: ClientRoom;
+    hand: { id: string }[] & Partial<Card>[];
+  }) => void;
+  test: () => void;
+  tradeHand: (params: {
+    player: PlayerType;
+    room: ClientRoom;
+    cardsToTrade: Card[];
+  }) => void;
 }
 
 export type SocketType = Socket<ServerToClientEvents, ClientToServerEvents>;

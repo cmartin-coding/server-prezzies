@@ -127,7 +127,10 @@ const gameSocketListeners = (
             serverRoom.numberOfPlayers - 1
           ];
         serverRoom.playersCompleted = adjustedPlayersCompleted;
-        serverPlayer.position = position;
+        serverPlayer.position = {
+          title: position,
+          place: serverRoom.numberOfPlayers - 1,
+        };
       } else {
         // Set the player into the players completed arr based on the current place everyone is playing for
         serverRoom.playersCompleted[
@@ -135,10 +138,13 @@ const gameSocketListeners = (
         ] = serverPlayer;
 
         // Update the player position
-        serverPlayer.position =
-          positionTitles[serverRoom.numberOfPlayers][
-            serverRoom.placeIndexRemainingPlayersArePlayingFor
-          ];
+        serverPlayer.position = {
+          title:
+            positionTitles[serverRoom.numberOfPlayers][
+              serverRoom.placeIndexRemainingPlayersArePlayingFor
+            ],
+          place: serverRoom.placeIndexRemainingPlayersArePlayingFor,
+        };
 
         // If the place they are playing for is index of 0 (ie: 1st place) then increment that players win counter
         if (serverRoom.placeIndexRemainingPlayersArePlayingFor === 0) {
@@ -207,11 +213,13 @@ const gameSocketListeners = (
         (p) => !serverRoom.playersCompleted.some((player) => player.id === p.id)
       )[0];
 
-      remainingPlayer.position =
-        positionTitles[serverRoom.numberOfPlayers][
-          serverRoom.placeIndexRemainingPlayersArePlayingFor
-        ];
-
+      remainingPlayer.position = {
+        title:
+          positionTitles[serverRoom.numberOfPlayers][
+            serverRoom.placeIndexRemainingPlayersArePlayingFor
+          ],
+        place: serverRoom.placeIndexRemainingPlayersArePlayingFor,
+      };
       serverRoom.playersCompleted[
         serverRoom.placeIndexRemainingPlayersArePlayingFor
       ] = remainingPlayer;
@@ -339,7 +347,68 @@ const gameSocketListeners = (
         message: `${player.name} COMPLETED IT`,
       });
 
-      const clientRoom = generateClientRoomFromServerRoom(serverRoom);
+      if (serverPlayer.hand.length === 0) {
+        serverRoom.playersCompleted[
+          serverRoom.placeIndexRemainingPlayersArePlayingFor
+        ] = serverPlayer;
+
+        // Update the player position
+        serverPlayer.position = {
+          title:
+            positionTitles[serverRoom.numberOfPlayers][
+              serverRoom.placeIndexRemainingPlayersArePlayingFor
+            ],
+          place: serverRoom.placeIndexRemainingPlayersArePlayingFor,
+        };
+
+        // If the place they are playing for is index of 0 (ie: 1st place) then increment that players win counter
+        if (serverRoom.placeIndexRemainingPlayersArePlayingFor === 0) {
+          serverPlayer.wins++;
+        }
+
+        // Increment the position everyone is playing for
+        serverRoom.placeIndexRemainingPlayersArePlayingFor++;
+      }
+
+      // If the players completed length is the number of players minus one then the game is over
+      if (
+        serverRoom.playersCompleted.length ===
+        serverRoom.numberOfPlayers - 1
+      ) {
+        const remainingPlayer = serverRoom.players.filter(
+          (p) =>
+            !serverRoom.playersCompleted.some((player) => player.id === p.id)
+        )[0];
+
+        remainingPlayer.position = {
+          title:
+            positionTitles[serverRoom.numberOfPlayers][
+              serverRoom.placeIndexRemainingPlayersArePlayingFor
+            ],
+          place: serverRoom.placeIndexRemainingPlayersArePlayingFor,
+        };
+
+        serverRoom.playersCompleted[
+          serverRoom.placeIndexRemainingPlayersArePlayingFor
+        ] = remainingPlayer;
+
+        serverRoom.gameIsOver = true;
+      }
+
+      const clientRoom = serverRoom.gameIsOver
+        ? generateClientRoomFromServerRoom(handleResetServerRoom(serverRoom))
+        : generateClientRoomFromServerRoom(serverRoom);
+
+      if (clientRoom.gameIsOver) {
+        // Update all players in case they were changed based on how the game ended
+        for (let i = 0; i < serverRoom.numberOfPlayers; i++) {
+          const player = serverRoom.players[i];
+          socket.to(player.socketID).emit("onUpdatePlayerAfterGameCompleted", {
+            updatedPlayer: player,
+          });
+        }
+        io.in(room.room).emit("onGameIsOver", { updatedRoom: clientRoom });
+      }
 
       socket.emit("onCompletedIt", {
         updatedPlayer: serverPlayer,
