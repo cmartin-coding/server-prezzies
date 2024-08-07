@@ -1,4 +1,3 @@
-import { Server, Socket } from "socket.io";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
 import {
   ClientAdjustedPlayer,
@@ -12,13 +11,22 @@ import { rooms } from "..";
 import {
   generateClientRoomFromServerRoom,
   generateRoomCode,
+  getServerRoom,
   getSortedHandByPoints,
   makeDeck,
   shuffleAndDealDeck,
 } from "../helpers";
-import { IOType } from "../socketTypes";
+import {
+  ClientToServerEvents,
+  IOType,
+  ServerToClientEvents,
+} from "../socketTypes";
+import { Socket } from "socket.io";
 
-const homeSocketListeners = (socket: Socket, io: IOType) => {
+const homeSocketListeners = (
+  socket: Socket<ClientToServerEvents, ServerToClientEvents>,
+  io: IOType
+) => {
   const onCreatedRoom = (params: SocketListenerRoomType) => {
     console.log("Creating the room");
 
@@ -50,7 +58,6 @@ const homeSocketListeners = (socket: Socket, io: IOType) => {
       isInPostGameLobby: false,
     };
 
-    console.log(roomDeck);
     // Create a new server room type that holds source of truth
     const serverRoom: RoomType = {
       cardsPlayed: [],
@@ -99,7 +106,7 @@ const homeSocketListeners = (socket: Socket, io: IOType) => {
     socket.emit("onCreatedRoom", { room: clientRoom, player: player });
   };
 
-  const onJoinedRoom = (params: SocketListenerRoomType) => {
+  const onJoinedRoom = (params: { userName: string; roomName: string }) => {
     const userName = params.userName;
     const roomCode = params.roomName;
 
@@ -114,7 +121,14 @@ const homeSocketListeners = (socket: Socket, io: IOType) => {
 
     // If room does exist initialize room value here
     const roomToJoin = rooms[roomIx];
+
+    if (roomToJoin.players.length === roomToJoin.numberOfPlayers) {
+      return socket.emit("onBroadcastMessage", {
+        message: "Sorry the room is full",
+      });
+    }
     // Create player
+
     const playerJoinedIx = roomToJoin.players.length;
     const playerID = randomUUID();
     const player: PlayerType = {
@@ -130,7 +144,8 @@ const homeSocketListeners = (socket: Socket, io: IOType) => {
     };
 
     // Add new player to room
-    roomToJoin.players.push(player);
+    roomToJoin.players = [...roomToJoin.players, player];
+    // roomToJoin.players.push(player);
 
     // Create updated client room
     const adjustedClientRoom: ClientRoom =
