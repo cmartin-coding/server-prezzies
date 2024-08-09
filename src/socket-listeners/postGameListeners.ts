@@ -8,6 +8,7 @@ import {
   getIsPlayersTurn,
   getServerPlayer,
   getServerRoom,
+  getSortedHandByPoints,
   getStartingPlayer,
   handleCheckForLastPlaceTradedBestCards,
   handleTradingCardToPlayer,
@@ -59,7 +60,8 @@ const postGameSocketListeners = (
       hand,
       serverRoom.deck
     );
-    serverPlayer.hand = formattedHand as Card[];
+    const sortedHand = getSortedHandByPoints(formattedHand as Card[]);
+    serverPlayer.hand = sortedHand;
 
     // Remove that hand from selection and set the available hands to select to the filtered hans
     const filteredAvailableHands = serverRoom.handsToChoose.filter(
@@ -111,11 +113,13 @@ const postGameSocketListeners = (
     const vicePresident = serverRoom.players.find(
       (s) => s.position.place === 1
     );
-    const scum = serverRoom.players.find(
-      (s) =>
-        s.position.place === serverRoom.numberOfPlayers - 1 ||
-        s.position.place === serverRoom.numberOfPlayers - 2
-    );
+    const scum = serverRoom.players.find((s) => {
+      if (numberOfPlayersTrading === 2) {
+        return s.position.place === serverRoom.numberOfPlayers - 1;
+      } else {
+        return s.position.place === serverRoom.numberOfPlayers - 2;
+      }
+    });
     const scummyScum = serverRoom.players.find(
       (s) => s.position.place === serverRoom.numberOfPlayers - 1
     );
@@ -221,7 +225,6 @@ const postGameSocketListeners = (
       recipientHand: (recipient as PlayerType).hand,
     });
 
-    console.log("REC,SEND", recipientHand, senderHand);
     // Update the server players hand
     serverPlayer.hand = senderHand;
 

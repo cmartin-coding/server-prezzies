@@ -495,9 +495,9 @@ export function handleCheckForLastPlaceTradedBestCards(
 ): boolean {
   const cardsSorted = hand.sort((a, b) => {
     if (a.points !== b.points) {
-      return a.points - b.points;
+      return b.points - a.points;
     } else {
-      return a.suitPoints - b.suitPoints;
+      return b.suitPoints - a.suitPoints;
     }
   });
 
