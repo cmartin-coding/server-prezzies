@@ -25,7 +25,7 @@ app.use(cors());
 const server = http.createServer(app);
 
 const io: IOType = new Server(server, {
-  cors: { origin: "http://localhost:5173", methods: ["GET", "POST"] },
+  cors: { origin: "http://137.184.184.41", methods: ["GET", "POST"] },
 });
 
 export const rooms: RoomType[] = [];
