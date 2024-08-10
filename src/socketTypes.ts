@@ -45,6 +45,10 @@ export interface ServerToClientEvents {
     isTradingCompleted: boolean;
     room: ClientRoom;
   }) => void;
+  onAllPlayersReady: (params: {
+    shouldStartGame: boolean;
+    room: ClientRoom;
+  }) => void;
 }
 export interface ClientToServerEvents {
   createRoom: (params: {
@@ -81,6 +85,14 @@ export interface ClientToServerEvents {
     player: PlayerType;
     room: ClientRoom;
     cardsToTrade: Card[];
+  }) => void;
+  leaveGameFromLobby: (params: {
+    room: ClientRoom;
+    player: PlayerType;
+  }) => void;
+  leaveGameFromCardTable: (params: {
+    room: ClientRoom;
+    player: PlayerType;
   }) => void;
 }
 

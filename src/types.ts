@@ -51,6 +51,7 @@ export type RoomType = {
   gameIsOver: boolean;
   numberOfGames: number;
   numberOfTradesCompleted: number;
+  nextAvailableHandIndex?: number;
 };
 export type ClientRoom = {
   id: string;

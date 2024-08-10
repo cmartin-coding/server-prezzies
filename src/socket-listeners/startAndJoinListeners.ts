@@ -129,10 +129,19 @@ const homeSocketListeners = (
     }
     // Create player
 
-    const playerJoinedIx = roomToJoin.players.length;
+    // Give them the hand based on when they joined the arr
+    let handIndex = roomToJoin.players.length;
+    // If a player had left before this player joined then we would need to give them the hand that we should assign to them
+    if (roomToJoin.nextAvailableHandIndex !== undefined) {
+      handIndex = roomToJoin.nextAvailableHandIndex;
+
+      // After setting this hand index set it to undefined so we can just use the player joined index
+      roomToJoin.nextAvailableHandIndex = undefined;
+    }
+
     const playerID = randomUUID();
     const player: PlayerType = {
-      hand: getSortedHandByPoints(roomToJoin.handsToChoose[playerJoinedIx]),
+      hand: getSortedHandByPoints(roomToJoin.handsToChoose[handIndex]),
       id: playerID,
       socketID: socket.id,
       isReady: false,

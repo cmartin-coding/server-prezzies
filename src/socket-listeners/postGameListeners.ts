@@ -228,8 +228,9 @@ const postGameSocketListeners = (
     // Update the server players hand
     serverPlayer.hand = senderHand;
 
+    const sortedRecipientHand = getSortedHandByPoints(recipientHand);
     // Update the recipient hand
-    (recipient as PlayerType).hand = recipientHand;
+    (recipient as PlayerType).hand = sortedRecipientHand;
 
     socket
       .to((recipient as PlayerType).socketID)

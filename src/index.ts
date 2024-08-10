@@ -7,6 +7,11 @@ import { lobbySocketListeners } from "./socket-listeners/lobbyListeners";
 import { gameSocketListeners } from "./socket-listeners/gameListeners";
 import { IOType } from "./socketTypes";
 import { postGameSocketListeners } from "./socket-listeners/postGameListeners";
+import { leaveLobbyListeners } from "./socket-listeners/leaveLobbyListeners";
+import {
+  generateClientRoomFromServerRoom,
+  handleRemovingPlayerFromRoom,
+} from "./helpers";
 
 const http = require("http");
 const cors = require("cors");
@@ -32,10 +37,37 @@ io.on("connection", (socket) => {
   socket.on("test", () => {
     socket.emit("onTest", { serverRoom: rooms[0] });
   });
+
+  socket.on("disconnect", (msg) => {
+    // NEED TO REMOVE THE PLAYER FROM THE
+    const roomWithDisconnectedPlayer = rooms.find(
+      (r) => !!r.players.find((p) => p.socketID === socket.id)
+    );
+
+    if (!roomWithDisconnectedPlayer) {
+      return console.log("Cannot find room with socket id of" + socket.id);
+    }
+
+    const updatedServerRoom = handleRemovingPlayerFromRoom(
+      roomWithDisconnectedPlayer,
+      socket.id
+    );
+
+    const clientRoom = generateClientRoomFromServerRoom(updatedServerRoom);
+
+    io.to(roomWithDisconnectedPlayer.room).emit("onBroadcastMessage", {
+      message: `${socket.id} disconnected from the game`,
+    });
+    io.to(roomWithDisconnectedPlayer.room).emit("onUpdateRoom", {
+      updatedRoom: clientRoom,
+    });
+  });
+
   homeSocketListeners(socket, io);
   lobbySocketListeners(socket, io);
   gameSocketListeners(socket, io);
   postGameSocketListeners(socket, io);
+  leaveLobbyListeners(socket, io);
 });
 
 app.get("/", (request: Request, response: Response) => {

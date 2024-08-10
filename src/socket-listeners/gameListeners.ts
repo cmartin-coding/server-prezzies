@@ -39,8 +39,8 @@ const gameSocketListeners = (
 
     // If it is not their turn we will emit a socket to update their state with an error message
     if (!isPlayersTurn) {
-      io.in(room.room).emit("onBroadcastMessage", {
-        message: `${player.name} tried to play out of turn!`,
+      socket.emit("onBroadcastMessage", {
+        message: `It is not your turn yet`,
       });
       return;
     }
@@ -80,6 +80,12 @@ const gameSocketListeners = (
     if (isPlayingTwo) {
       // Set the cardsPlayed to empty to show that they cleared the field
       serverRoom.cardsPlayed = [];
+      socket.emit("onBroadcastMessage", {
+        message: "Get that shit outtta here",
+      });
+      socket.to(room.room).emit("onBroadcastMessage", {
+        message: `Get that shit outta here -${serverPlayer.name}`,
+      });
     } else {
       // HANDLE ALL OTHER HAND LOGIC
 
@@ -94,22 +100,36 @@ const gameSocketListeners = (
         hand[0].points === serverRoom.previousHand[0].points
       ) {
         const turnIndex = getNextTurnIndex(serverRoom);
+        const skippedPlayer = serverRoom.players.find(
+          (p) => p.id === serverRoom.currentTurnPlayerId
+        );
         serverRoom.currentTurnIx = turnIndex;
         serverRoom.currentTurnPlayerId = serverRoom.players[turnIndex].id;
-        io.in(room.room).emit("onBroadcastMessage", {
-          message: `${
-            serverRoom.players[serverRoom.currentTurnIx].name
-          } has been skipped!`,
+
+        socket
+          .to(serverRoom.room)
+          .except(skippedPlayer?.socketID as string)
+          .emit("onBroadcastMessage", {
+            message: `${skippedPlayer?.name} has been skipped!`,
+          });
+        socket
+          .to(skippedPlayer?.socketID as string)
+          .emit("onBroadcastMessage", { message: "You were skipped" });
+        socket.emit("onBroadcastMessage", {
+          message: `You skipped ${skippedPlayer?.name}`,
         });
       }
-      io.in(room.room).emit("onBroadcastMessage", {
-        message: `It is ${
-          serverRoom.players[serverRoom.currentTurnIx].name
-        }'s turn`,
-      });
+
       // Add the hand to the cards played arr
       serverRoom.cardsPlayed = [...serverRoom.cardsPlayed, ...hand];
     }
+
+    const nextTurnPlayer = serverRoom.players.find(
+      (p) => p.id === serverRoom.currentTurnPlayerId
+    );
+    socket
+      .to(nextTurnPlayer?.socketID as string)
+      .emit("onBroadcastMessage", { message: "It is your turn" });
 
     // HANDLE CHECK IF USER IS OUT
     // If the curr player no longer has any cards then they are out. And give them a position
@@ -137,6 +157,7 @@ const gameSocketListeners = (
           serverRoom.placeIndexRemainingPlayersArePlayingFor
         ] = serverPlayer;
 
+        // If players leave below 4 people then we may want to spit back out to home screen
         // Update the player position
         serverPlayer.position = {
           title:
@@ -265,8 +286,8 @@ const gameSocketListeners = (
 
     // If it is the first turn then they must play the 3 of clubs
     if (room.turnCounter === 0) {
-      io.in(room.room).emit("onBroadcastMessage", {
-        message: `${player.name} tried to skip playing the 3 of clubs.`,
+      socket.emit("onBroadcastMessage", {
+        message: `You have to play the 3 of clubs.`,
       });
       return;
     }
@@ -298,16 +319,23 @@ const gameSocketListeners = (
     serverRoom.currentTurnPlayerId = serverRoom.players[turnIndex].id;
     serverRoom.turnCounter++;
 
+    const nextTurnPlayer = serverRoom.players.find(
+      (p) => p.id === serverRoom.currentTurnPlayerId
+    );
+    socket
+      .to(nextTurnPlayer?.socketID as string)
+      .emit("onBroadcastMessage", { message: "It is your turn" });
+
     const updatedRoom = generateClientRoomFromServerRoom(serverRoom);
 
-    io.in(room.room).emit("onBroadcastMessage", {
+    socket.to(room.room).emit("onBroadcastMessage", {
       message: `${player.name} passed their turn`,
     });
-    io.in(room.room).emit("onBroadcastMessage", {
-      message: `It is ${
-        serverRoom.players[serverRoom.currentTurnIx].name
-      }'s turn`,
-    });
+    // io.in(room.room).emit("onBroadcastMessage", {
+    //   message: `It is ${
+    //     serverRoom.players[serverRoom.currentTurnIx].name
+    //   }'s turn`,
+    // });
 
     io.in(room.room).emit("onPassedTurn", { updatedRoom: updatedRoom });
   };
@@ -342,8 +370,8 @@ const gameSocketListeners = (
         card: "Any",
         numberOfCardsNeeded: serverRoom.numberOfPlayers > 5 ? 8 : 4,
       };
-
-      io.in(room.room).emit("onBroadcastMessage", {
+      socket.emit("onBroadcastMessage", { message: "COMPLETED IT" });
+      socket.to(room.room).emit("onBroadcastMessage", {
         message: `${player.name} COMPLETED IT`,
       });
 
@@ -416,8 +444,8 @@ const gameSocketListeners = (
       });
       socket.to(room.room).emit("onUpdateRoom", { updatedRoom: clientRoom });
     } else {
-      io.in(room.room).emit("onBroadcastMessage", {
-        message: `${player.name} did not completed it`,
+      socket.emit("onBroadcastMessage", {
+        message: `You did not completed it`,
       });
     }
   };

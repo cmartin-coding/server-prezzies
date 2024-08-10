@@ -522,3 +522,47 @@ export function handleCheckForLastPlaceTradedBestCards(
 
   return true;
 }
+
+export function handlePlayerLeavingRoomFromLobby(
+  serverRoom: RoomType,
+  player: PlayerType
+) {
+  // If the player leaves from the lobby then we need to reshuffle the deck
+}
+
+export function handleRemovingPlayerFromRoom(
+  serverRoom: RoomType,
+  socketId: string
+) {
+  const disconnectedPlayer = serverRoom.players.find(
+    (p) => p.socketID === socketId
+  );
+
+  const isDisconnectedPlayerCurrentTurn =
+    serverRoom.currentTurnPlayerId === disconnectedPlayer?.id;
+
+  if (isDisconnectedPlayerCurrentTurn) {
+    const turnIndex = getNextTurnIndex(serverRoom);
+    serverRoom.currentTurnIx = turnIndex;
+    serverRoom.currentTurnPlayerId =
+      serverRoom.players[serverRoom.currentTurnIx].id;
+  }
+  if (disconnectedPlayer?.id === serverRoom.lastPlayerPlayed) {
+    serverRoom.cardsPlayed = [];
+    serverRoom.lastPlayerPlayed = "";
+    serverRoom.opportunityForCompletedIt = {
+      basePoints: 0,
+      card: "Any",
+      numberOfCardsNeeded: serverRoom.numberOfPlayers <= 5 ? 4 : 8,
+    };
+  }
+
+  const updatedPlayers = serverRoom.players.filter(
+    (p) => p.socketID !== socketId
+  );
+
+  serverRoom.players = updatedPlayers;
+  serverRoom.numberOfPlayers = serverRoom.numberOfPlayers - 1;
+
+  return serverRoom;
+}
